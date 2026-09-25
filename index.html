@@ -1,0 +1,1654 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi E-THINK - Rutan Kelas IIB Trenggalek</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts Inter & Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Supabase JS Client -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <!-- SheetJS (xlsx) untuk Membaca & Ekspor File Excel -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- jsPDF untuk Auto-Generate PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- qrcode-generator untuk QR Code PDF Resmi -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        heading: ['"Outfit"', 'sans-serif'],
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'float': 'float 4s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px)' },
+                            '50%': { transform: 'translateY(-6px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glass-card-light {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+        }
+        .step-transition {
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        @keyframes waterRipple {
+            0% {
+                transform: scale(0.8);
+                opacity: 1;
+                box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.6), 0 0 0 0 rgba(99, 102, 241, 0.4);
+            }
+            50% { opacity: 0.8; }
+            100% {
+                transform: scale(1.18);
+                opacity: 0;
+                box-shadow: 0 0 0 45px rgba(56, 189, 248, 0), 0 0 0 90px rgba(99, 102, 241, 0);
+            }
+        }
+        .ripple-effect {
+            animation: waterRipple 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+        }
+    </style>
+</head>
+<body class="h-full font-sans antialiased min-h-screen py-10 px-4 sm:px-6 lg:px-8 bg-gradient-to-br from-slate-100 via-slate-200 to-indigo-100 text-slate-800 relative flex flex-col justify-between">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-5 right-5 z-50 space-y-3 pointer-events-none"></div>
+
+    <!-- Modal Notifikasi Berhasil -->
+    <div id="successNotificationModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md hidden">
+        <div class="bg-white border border-emerald-500/30 max-w-lg w-full mx-4 p-8 rounded-3xl shadow-2xl space-y-6 text-left">
+            <div class="flex items-center space-x-3 border-b border-slate-200 pb-4">
+                <div class="w-12 h-12 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-center text-emerald-500 flex-shrink-0 shadow-inner">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                </div>
+                <div>
+                    <h3 class="font-heading text-lg font-bold text-slate-900">Dokumen Berhasil Dibuat!</h3>
+                    <p class="text-xs text-slate-500">File PDF 4 halaman telah di-generate otomatis.</p>
+                </div>
+            </div>
+
+            <div class="bg-slate-50 p-5 rounded-2xl border border-slate-200 text-xs leading-relaxed space-y-3 text-slate-700 font-mono">
+                <p id="notifHelloText" class="font-bold text-indigo-600 whitespace-pre-line"></p>
+                <div class="space-y-1 pt-1 text-slate-600 font-sans">
+                    <p class="font-bold text-slate-800">*) Setelah ditandatangani lengkapi berkas di bawah ini :</p>
+                    <p>1. FC KK Penjamin</p>
+                    <p>2. FC KTP Penjamin</p>
+                    <p>3. Surat keterangan dari RT/RW ket : Pengurusan Integrasi</p>
+                    <p>4. Semua berkas dimasukkan ke amplop coklat dikirimkan dengan format di bawah ini :</p>
+                    <div class="p-3 bg-white rounded-xl border border-slate-200 mt-2 text-[11px] font-mono">
+                        <p class="font-bold text-indigo-500">Kepada : Yth. Admin E-THINK</p>
+                        <p class="font-bold text-indigo-500">Di : Rumah Tahanan Negara Kelas IIB Trenggalek</p>
+                        <p class="text-slate-500">Jl. Supriadi No.15 Ds. Ngares Kec. Trenggalek Kab. Trenggalek</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex space-x-3 pt-2">
+                <button onclick="closeSuccessModal()" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-heading font-semibold rounded-xl shadow-lg transition-all text-xs">Tutup & Kembali ke Beranda</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Login Admin -->
+    <div id="adminLoginModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md hidden">
+        <div class="bg-white border border-slate-200 max-w-sm w-full mx-4 p-8 rounded-3xl shadow-2xl space-y-6 text-center">
+            <div class="inline-flex items-center justify-center w-14 h-14 bg-indigo-600/10 border border-indigo-500/20 rounded-2xl text-indigo-600 mb-1 shadow-inner">
+                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+            </div>
+            <div>
+                <h3 class="font-heading text-xl font-bold text-slate-900">Login Admin Rutan</h3>
+                <p class="text-xs text-slate-500 mt-1">Masukkan kata sandi pengelola.</p>
+            </div>
+            <div class="space-y-4">
+                <input type="password" id="adminPasswordInput" placeholder="Masukkan kata sandi..." onkeypress="handleAdminLoginKeyPress(event)" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-center focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-all shadow-sm text-xs">
+                <div class="flex space-x-3 pt-1">
+                    <button onclick="closeAdminLoginModal()" class="w-1/2 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 font-heading font-semibold rounded-xl text-xs">Batal</button>
+                    <button onclick="executeAdminLogin()" class="w-1/2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-heading font-semibold rounded-xl text-xs">Masuk</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ubah PIN Admin -->
+    <div id="changePasswordModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md hidden">
+        <div class="bg-white border border-slate-200 max-w-md w-full mx-4 p-8 rounded-3xl shadow-2xl space-y-6">
+            <div class="text-center">
+                <h3 class="font-heading text-xl font-bold text-slate-900">Ubah Kata Sandi Admin</h3>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Kata Sandi Lama</label>
+                    <input type="password" id="oldPasswordInput" placeholder="Password lama..." class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Kata Sandi Baru</label>
+                    <input type="password" id="newPasswordInput" placeholder="Password baru..." class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 text-xs">
+                </div>
+                <div class="flex space-x-3 pt-2">
+                    <button onclick="closeChangePasswordModal()" class="w-1/2 py-3 bg-slate-200 text-slate-700 font-heading font-semibold rounded-xl text-xs">Batal</button>
+                    <button onclick="executeChangePassword()" class="w-1/2 py-3 bg-sky-600 hover:bg-sky-700 text-white font-heading font-semibold rounded-xl text-xs">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edit Pejabat -->
+    <div id="editPejabatModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md hidden">
+        <div class="bg-white border border-indigo-500/30 max-w-lg w-full mx-4 p-8 rounded-3xl shadow-2xl space-y-6">
+            <div class="text-center">
+                <h3 class="font-heading text-xl font-bold text-slate-900">Edit Parameter Pejabat Penandatangan</h3>
+            </div>
+            <div class="space-y-4">
+                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-600">1. Kepala Rutan Trenggalek</h4>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap & Gelar</label>
+                        <input type="text" id="editKarutanNama" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">NIP Karutan</label>
+                        <input type="text" id="editKarutanNip" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 font-mono">
+                    </div>
+                </div>
+
+                <div class="p-4 bg-slate-50 rounded-2xl border border-slate-200 space-y-3">
+                    <h4 class="text-xs font-bold uppercase tracking-wider text-indigo-600">2. Ka Subsi Pelayanan Tahanan</h4>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Nama Lengkap & Gelar</label>
+                        <input type="text" id="editKasubsiNama" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">NIP Ka Subsi</label>
+                        <input type="text" id="editKasubsiNip" class="w-full px-3.5 py-2.5 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 font-mono">
+                    </div>
+                </div>
+
+                <div class="flex space-x-3 pt-2">
+                    <button onclick="closeEditPejabatModal()" class="w-1/2 py-3 bg-slate-200 text-slate-700 font-heading font-semibold rounded-xl text-xs">Batal</button>
+                    <button onclick="savePejabatParameters()" class="w-1/2 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-heading font-semibold rounded-xl text-xs">Simpan</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Wrapper Utama -->
+    <div class="max-w-4xl mx-auto space-y-6 w-full">
+        
+        <!-- Header Universal -->
+        <div id="mainHeaderContainer" class="relative flex flex-col items-center justify-center text-center pt-2 pb-1 hidden">
+            <!-- Logo E-THINK di Header -->
+            <div onclick="switchTab('welcome')" class="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-3 shadow-[0_0_25px_rgba(56,189,248,0.25)] relative group cursor-pointer hover:scale-105 transition-transform" title="Kembali ke Beranda">
+                <svg width="64" height="64" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <rect x="5" y="5" width="110" height="110" rx="28" fill="#0F172A" stroke="#38BDF8" stroke-opacity="0.4" stroke-width="2"/>
+                  <rect x="15" y="15" width="90" height="90" rx="20" fill="url(#bg-gradient)" fill-opacity="0.25"/>
+                  <path d="M40 38H50V82H40V38Z" fill="url(#brand-gradient)"/>
+                  <path d="M48 38H80V47H48V38Z" fill="url(#brand-gradient)"/>
+                  <path d="M48 55H72V64H48V55Z" fill="url(#brand-gradient)"/>
+                  <path d="M48 73H80V82H48V73Z" fill="url(#brand-gradient)"/>
+                  <circle cx="85" cy="38" r="4" fill="#38BDF8" filter="drop-shadow(0px 0px 6px #38BDF8)"/>
+                  <defs>
+                    <linearGradient id="bg-gradient" x1="15" y1="15" x2="105" y2="105" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#4F46E5"/><stop offset="1" stop-color="#0284C7"/>
+                    </linearGradient>
+                    <linearGradient id="brand-gradient" x1="40" y1="38" x2="80" y2="82" gradientUnits="userSpaceOnUse">
+                      <stop stop-color="#818CF8"/><stop offset="0.5" stop-color="#38BDF8"/><stop offset="1" stop-color="#6366F1"/>
+                    </linearGradient>
+                  </defs>
+                </svg>
+            </div>
+
+            <h1 id="headerTitle" class="font-heading text-2xl sm:text-3xl font-bold tracking-tight mb-1 text-slate-900">
+                Aplikasi <span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-sky-600">E-THINK</span>
+            </h1>
+            <div id="headerSubtitle" class="text-xs font-medium max-w-md mx-auto space-y-0.5 text-slate-600">
+                <p>Sistem Pengusulan Integrasi Digital Terpadu</p>
+                <p class="font-bold tracking-wide">Rumah Tahanan Negara Kelas IIB Trenggalek</p>
+            </div>
+        </div>
+
+        <!-- VIEW -1: HALAMAN SELAMAT DATANG (WELCOME SCREEN) -->
+        <div id="welcomeView" class="glass-card-light shadow-2xl rounded-3xl p-8 sm:p-14 text-center space-y-8 animate-float">
+            <div class="max-w-xl mx-auto space-y-4">
+                <span class="inline-flex items-center space-x-2 px-4 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold border border-indigo-100 uppercase tracking-wider shadow-sm">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span>
+                    <span>Sistem Integrasi Digital Resmi</span>
+                </span>
+                
+                <h2 class="font-heading text-3xl sm:text-5xl font-extrabold tracking-tight text-slate-900">
+                    Selamat Datang di <br><span class="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 via-sky-500 to-indigo-700">E-THINK Rutan Trenggalek</span>
+                </h2>
+                
+                <p class="text-sm sm:text-base text-slate-600 max-w-md mx-auto">
+                    Solusi praktis pembuatan dokumen surat jaminan kesanggupan warga binaan dan pusat manajemen data terpadu.
+                </p>
+            </div>
+
+            <div class="py-4 flex flex-col items-center justify-center space-y-4">
+                <div id="logoContainerWrapper" class="relative inline-flex items-center justify-center">
+                    <div id="waterRippleEffect" class="absolute inset-0 rounded-3xl pointer-events-none"></div>
+
+                    <div onclick="enterAppFromWelcome(event)" class="group relative cursor-pointer inline-flex items-center justify-center p-6 bg-gradient-to-br from-indigo-900 via-slate-900 to-sky-950 rounded-3xl border border-sky-500/50 shadow-[0_0_50px_rgba(56,189,248,0.3)] hover:shadow-[0_0_70px_rgba(56,189,248,0.6)] transform hover:scale-105 transition-all duration-300 z-20">
+                        <div class="absolute inset-0 bg-sky-500/10 rounded-3xl filter blur-md group-hover:bg-sky-500/20 transition-all pointer-events-none"></div>
+                        <svg width="100" height="100" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg" class="relative z-10 drop-shadow-lg pointer-events-none">
+                          <rect x="5" y="5" width="110" height="110" rx="28" fill="#0F172A" stroke="#38BDF8" stroke-opacity="0.6" stroke-width="2.5"/>
+                          <rect x="15" y="15" width="90" height="90" rx="20" fill="url(#bg-gradient-w)" fill-opacity="0.3"/>
+                          <path d="M40 38H50V82H40V38Z" fill="url(#brand-gradient-w)"/>
+                          <path d="M48 38H80V47H48V38Z" fill="url(#brand-gradient-w)"/>
+                          <path d="M48 55H72V64H48V55Z" fill="url(#brand-gradient-w)"/>
+                          <path d="M48 73H80V82H48V73Z" fill="url(#brand-gradient-w)"/>
+                          <circle cx="85" cy="38" r="4.5" fill="#38BDF8" filter="drop-shadow(0px 0px 8px #38BDF8)"/>
+                          <defs>
+                            <linearGradient id="bg-gradient-w" x1="15" y1="15" x2="105" y2="105" gradientUnits="userSpaceOnUse">
+                              <stop stop-color="#4F46E5"/><stop offset="1" stop-color="#0284C7"/>
+                            </linearGradient>
+                            <linearGradient id="brand-gradient-w" x1="40" y1="38" x2="80" y2="82" gradientUnits="userSpaceOnUse">
+                              <stop stop-color="#818CF8"/><stop offset="0.5" stop-color="#38BDF8"/><stop offset="1" stop-color="#6366F1"/>
+                            </linearGradient>
+                          </defs>
+                        </svg>
+                    </div>
+                </div>
+                <div class="space-y-1">
+                    <p class="text-xs font-bold uppercase tracking-widest text-indigo-600 animate-pulse">Klik Logo E-Think di Atas untuk Masuk</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 0: HALAMAN PEMILIHAN MENU -->
+        <div id="loginView" class="glass-card-light shadow-2xl rounded-3xl p-8 sm:p-12 text-center space-y-8 hidden">
+            <div class="max-w-xl mx-auto space-y-3">
+                <span id="timeGreetingBadge" class="inline-flex items-center space-x-2 px-4 py-1.5 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold border border-indigo-100 uppercase tracking-wider shadow-sm">
+                    <span id="greetingContainer" class="inline-flex items-center space-x-1.5">
+                        <span id="greetingIcon"></span>
+                        <span id="greetingText">Selamat Datang</span>
+                    </span>
+                </span>
+                <h2 class="font-heading text-2xl sm:text-3xl font-bold text-slate-900">Pilih Halaman Masuk</h2>
+                <p class="text-sm text-slate-600">Silakan pilih akses sesuai status Anda untuk masuk ke sistem E-THINK.</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 max-w-2xl mx-auto pt-4">
+                <div onclick="switchTab('form')" class="group p-8 rounded-3xl bg-gradient-to-br from-indigo-900 via-slate-900 to-indigo-950 text-white shadow-xl hover:shadow-indigo-500/25 border border-indigo-500/30 transition-all cursor-pointer flex flex-col items-center justify-center space-y-4">
+                    <div class="w-14 h-14 bg-indigo-600/30 border border-indigo-400/30 rounded-2xl flex items-center justify-center text-indigo-300 group-hover:scale-110 transition-transform shadow-inner">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-heading text-lg font-bold text-white">Keluarga WBP (Pemohon)</h3>
+                        <p class="text-xs text-slate-300 mt-1">Buat dokumen surat jaminan kesanggupan secara mandiri & praktis.</p>
+                    </div>
+                    <span class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-md">Masuk Sebagai Pemohon</span>
+                </div>
+
+                <div onclick="promptAdminLoginFromLanding()" class="group p-8 rounded-3xl bg-white border border-slate-200 shadow-xl hover:shadow-2xl transition-all cursor-pointer flex flex-col items-center justify-center space-y-4">
+                    <div class="w-14 h-14 bg-slate-100 border border-slate-200 rounded-2xl flex items-center justify-center text-slate-700 group-hover:scale-110 transition-transform shadow-inner">
+                        <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    </div>
+                    <div>
+                        <h3 class="font-heading text-lg font-bold text-slate-900">Admin / Petugas Rutan</h3>
+                        <p class="text-xs text-slate-500 mt-1">Kelola database WBP, upload file Excel & balas Live Chat dari keluarga.</p>
+                    </div>
+                    <span class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-bold shadow-md">Login Panel Admin</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 1: KARTU FORMULIR JAMINAN DENGAN MULTI-STEP WIZARD & LIVE PREVIEW -->
+        <div id="formView" class="glass-card-light shadow-2xl rounded-3xl overflow-hidden hidden">
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-8 py-6 border-b border-slate-800 text-white">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div class="flex items-center space-x-3">
+                        <button onclick="switchTab('login')" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-semibold transition-all flex items-center space-x-1">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+                            <span>Kembali</span>
+                        </button>
+                        <div>
+                            <h2 class="font-heading text-lg font-bold tracking-wide">Formulir Dokumen Jaminan E-THINK</h2>
+                            <p class="text-xs text-slate-400">Lengkapi data penjamin dan warga binaan secara bertahap</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Progress Bar Multi-Step -->
+                <div class="mt-6 grid grid-cols-3 gap-2">
+                    <div id="stepIndicator1" class="p-3 rounded-2xl bg-indigo-600 text-white text-center font-bold text-xs shadow-md transition-all">
+                        1. Data Penjamin
+                    </div>
+                    <div id="stepIndicator2" class="p-3 rounded-2xl bg-slate-800 text-slate-400 text-center font-bold text-xs shadow-md transition-all">
+                        2. Data WBP & Kalkulator
+                    </div>
+                    <div id="stepIndicator3" class="p-3 rounded-2xl bg-slate-800 text-slate-400 text-center font-bold text-xs shadow-md transition-all">
+                        3. Pratinjau & Unduh
+                    </div>
+                </div>
+            </div>
+
+            <form id="jossForm" class="p-6 sm:p-10 space-y-8">
+                <!-- WIZARD STEP 1: DATA PENJAMIN -->
+                <div id="wizardStep1" class="space-y-6 step-transition">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Nama Penjamin <span class="text-rose-500">*</span></label>
+                            <input type="text" id="nama_penjamin" placeholder="Nama lengkap sesuai KTP" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Umur Penjamin <span class="text-rose-500">*</span></label>
+                            <input type="number" id="umur_penjamin" placeholder="Contoh: 45" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Pekerjaan Penjamin <span class="text-rose-500">*</span></label>
+                            <input type="text" id="pekerjaan_penjamin" placeholder="Contoh: WIRASWASTA" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Hubungan dengan Narapidana <span class="text-rose-500">*</span></label>
+                            <input type="text" id="hubungan_penjamin" placeholder="Contoh: IBU KANDUNG" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none" required>
+                        </div>
+                        
+                        <div class="sm:col-span-2 bg-slate-50 p-5 rounded-2xl border border-slate-200 shadow-inner space-y-4">
+                            <h3 class="text-xs font-bold uppercase tracking-wider text-indigo-700 mb-2">Alamat Lengkap Penjamin Sesuai KTP <span class="text-rose-500">*</span></h3>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Nama Jalan / Dusun</label>
+                                    <input type="text" id="alamat_jalan" placeholder="Contoh: Dsn. Krajan" class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs" required>
+                                </div>
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">RT</label>
+                                        <input type="text" id="alamat_rt" placeholder="001" class="w-full px-3 py-3 bg-white border border-slate-300 rounded-xl text-center text-slate-800 shadow-sm text-xs" required>
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">RW</label>
+                                        <input type="text" id="alamat_rw" placeholder="002" class="w-full px-3 py-3 bg-white border border-slate-300 rounded-xl text-center text-slate-800 shadow-sm text-xs" required>
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Desa / Kelurahan</label>
+                                    <input type="text" id="alamat_desa" placeholder="Contoh: Ngares" class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Kecamatan</label>
+                                    <input type="text" id="alamat_kecamatan" placeholder="Contoh: Trenggalek" class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs" required>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Kabupaten / Kota</label>
+                                    <input type="text" id="alamat_kabupaten" value="KABUPATEN TRENGGALEK" class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 shadow-sm font-semibold text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1">Provinsi</label>
+                                    <input type="text" id="alamat_provinsi" value="JAWA TIMUR" class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 shadow-sm font-semibold text-xs">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">No. WhatsApp <span class="text-rose-500">*</span></label>
+                            <input type="text" id="no_handphone" placeholder="Contoh: 081234567890" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">E-mail <span class="text-rose-500">*</span></label>
+                            <input type="email" id="email_penjamin" placeholder="email@domain.com" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs" required>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end pt-4">
+                        <button type="button" onclick="validateAndNextStep(1)" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-heading font-semibold rounded-xl shadow-lg transition-all flex items-center space-x-2 text-xs">
+                            <span>Lanjut ke Data Warga Binaan</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- WIZARD STEP 2: DATA WBP & KALKULATOR -->
+                <div id="wizardStep2" class="space-y-6 step-transition hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        <!-- Smart Search / Autocomplete Dropdown WBP -->
+                        <div class="sm:col-span-2 relative">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Cari / Pilih Nama Warga Binaan <span class="text-rose-500">*</span></label>
+                            <input type="text" id="searchWbpInput" placeholder="Ketik nama WBP atau nomor register untuk mencari..." oninput="filterWbpOptions(this.value)" class="w-full px-4 py-3 bg-white border border-slate-300 rounded-xl text-slate-800 font-medium shadow-sm text-xs mb-2">
+                            <div id="wbpDropdownList" class="absolute z-20 left-0 right-0 bg-white border border-slate-200 rounded-2xl shadow-2xl max-h-48 overflow-y-auto hidden divide-y divide-slate-100"></div>
+                            <select id="nama_narapidana" class="hidden" required></select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Nomor Register</label>
+                            <input type="text" id="no_register_narapidana" readonly class="w-full px-4 py-3 bg-slate-100 border border-slate-300 rounded-xl text-slate-600 shadow-inner text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Umur WBP</label>
+                            <input type="number" id="umur_narapidana" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Pekerjaan WBP</label>
+                            <input type="text" id="pekerjaan_narapidana" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Jenis Kelamin</label>
+                            <select id="jenis_kelamin_narapidana" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs">
+                                <option value="LAKI - LAKI">LAKI - LAKI</option>
+                                <option value="PEREMPUAN">PEREMPUAN</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Agama</label>
+                            <select id="agama_narapidana" class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs">
+                                <option value="ISLAM">ISLAM</option>
+                                <option value="KRISTEN (PROTESTAN)">KRISTEN (PROTESTAN)</option>
+                                <option value="KRISTEN (KATOLIK)">KRISTEN (KATOLIK)</option>
+                                <option value="HINDU">HINDU</option>
+                                <option value="BUDDHA">BUDDHA</option>
+                                <option value="KONGHUCU">KONGHUCU</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Jenis Kejahatan</label>
+                            <input type="text" id="jenis_kejahatan_narapidana" placeholder="Jenis perkara..." class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs">
+                        </div>
+                        <div class="sm:col-span-2">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Pasal</label>
+                            <input type="text" id="pasal_narapidana" placeholder="Pasal..." class="w-full px-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-slate-800 shadow-sm text-xs">
+                        </div>
+                        
+                        <div class="sm:col-span-2 bg-indigo-50/60 p-5 rounded-2xl border border-indigo-100 shadow-inner space-y-4">
+                            <label class="block text-xs font-bold uppercase tracking-wider text-indigo-900">Lama Pidana Pokok <span class="text-rose-500">*</span></label>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Tahun</label>
+                                    <input type="number" id="pidana_tahun" min="0" value="0" class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-center font-bold text-slate-800 shadow-sm text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Bulan</label>
+                                    <input type="number" id="pidana_bulan" min="0" max="11" value="0" class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-center font-bold text-slate-800 shadow-sm text-xs">
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-500 mb-1">Hari</label>
+                                    <input type="number" id="pidana_hari" min="0" max="30" value="0" class="w-full px-3 py-2.5 bg-white border border-slate-300 rounded-xl text-center font-bold text-slate-800 shadow-sm text-xs">
+                                </div>
+                            </div>
+                            <div class="pt-2">
+                                <label class="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Hasil Kalkulasi Program Integrasi Otomatis:</label>
+                                <input type="text" id="proses_pengusulan" readonly class="w-full px-4 py-3 bg-white border border-indigo-300 rounded-xl font-bold text-indigo-900 text-xs shadow-sm">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between pt-4">
+                        <button type="button" onclick="prevStep(2)" class="px-6 py-3 bg-slate-200 text-slate-700 font-heading font-semibold rounded-xl text-xs">Kembali</button>
+                        <button type="button" onclick="validateAndNextStep(2)" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-heading font-semibold rounded-xl shadow-lg transition-all flex items-center space-x-2 text-xs">
+                            <span>Pratinjau Dokumen</span>
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- WIZARD STEP 3: LIVE PREVIEW & UNDUH PDF -->
+                <div id="wizardStep3" class="space-y-6 step-transition hidden">
+                    <div class="bg-indigo-950 text-white p-6 rounded-3xl space-y-4 shadow-xl">
+                        <div class="flex items-center justify-between border-b border-indigo-800 pb-3">
+                            <h3 class="font-heading text-base font-bold flex items-center space-x-2">
+                                <svg class="w-5 h-5 text-sky-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                                <span>Live Preview Ringkasan Berkas</span>
+                            </h3>
+                            <span class="px-3 py-1 bg-sky-500/20 text-sky-300 rounded-full text-[11px] font-bold border border-sky-400/30">Siap Cetak (4 Halaman)</span>
+                        </div>
+                        <div id="livePreviewContent" class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs font-mono text-indigo-200 bg-indigo-900/50 p-4 rounded-2xl border border-indigo-800"></div>
+                    </div>
+
+                    <div class="flex justify-between pt-4">
+                        <button type="button" onclick="prevStep(3)" class="px-6 py-3 bg-slate-200 text-slate-700 font-heading font-semibold rounded-xl text-xs">Kembali</button>
+                        <button type="submit" id="submitBtn" class="px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-700 text-white font-heading font-bold rounded-xl shadow-xl hover:scale-105 transition-transform text-xs">Simpan & Unduh PDF Resmi</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- VIEW 2: PANEL MANAJEMEN & UPLOAD FILE EXCEL WBP -->
+        <div id="uploadWbpView" class="glass-card-light shadow-2xl rounded-3xl overflow-hidden hidden">
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-8 py-6 border-b border-slate-800 text-white flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-sky-500/20 border border-sky-400/30 flex items-center justify-center text-sky-400 font-bold">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
+                    </div>
+                    <div>
+                        <h2 class="font-heading text-xl font-bold tracking-wide">Panel Manajemen Data & Admin</h2>
+                        <p class="text-xs text-slate-400">Pusat kendali database warga binaan dan kontrol sistem Rutan</p>
+                    </div>
+                </div>
+                <div>
+                    <button onclick="switchTab('login')" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-xl text-xs font-semibold transition-all">Kembali</button>
+                </div>
+            </div>
+
+            <div class="p-6 sm:p-10 space-y-8">
+                <!-- Grid Menu Aksi Admin yang Lebih Menarik -->
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+                    <button onclick="switchTab('wbpDatabase')" class="group p-5 rounded-2xl bg-white hover:bg-indigo-600 hover:text-white border border-slate-200 shadow-md hover:shadow-xl text-center flex flex-col items-center justify-center space-y-3 transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="w-12 h-12 rounded-xl bg-indigo-50 group-hover:bg-indigo-500/20 text-indigo-600 group-hover:text-white flex items-center justify-center transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>
+                        </div>
+                        <span class="text-xs font-bold tracking-wide">Database WBP</span>
+                    </button>
+
+                    <button onclick="switchTab('history')" class="group p-5 rounded-2xl bg-white hover:bg-sky-600 hover:text-white border border-slate-200 shadow-md hover:shadow-xl text-center flex flex-col items-center justify-center space-y-3 transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="w-12 h-12 rounded-xl bg-sky-50 group-hover:bg-sky-500/20 text-sky-600 group-hover:text-white flex items-center justify-center transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path></svg>
+                        </div>
+                        <span class="text-xs font-bold tracking-wide">Riwayat Dokumen</span>
+                    </button>
+
+                    <button onclick="switchTab('adminLiveChat')" class="group p-5 rounded-2xl bg-white hover:bg-emerald-600 hover:text-white border border-slate-200 shadow-md hover:shadow-xl text-center flex flex-col items-center justify-center space-y-3 transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="w-12 h-12 rounded-xl bg-emerald-50 group-hover:bg-emerald-500/20 text-emerald-600 group-hover:text-white flex items-center justify-center transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+                        </div>
+                        <span class="text-xs font-bold tracking-wide">Live Chat</span>
+                    </button>
+
+                    <button onclick="openEditPejabatModal()" class="group p-5 rounded-2xl bg-white hover:bg-blue-600 hover:text-white border border-slate-200 shadow-md hover:shadow-xl text-center flex flex-col items-center justify-center space-y-3 transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="w-12 h-12 rounded-xl bg-blue-50 group-hover:bg-blue-500/20 text-blue-600 group-hover:text-white flex items-center justify-center transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+                        </div>
+                        <span class="text-xs font-bold tracking-wide">Edit Pejabat</span>
+                    </button>
+
+                    <button onclick="openChangePasswordModal()" class="group p-5 rounded-2xl bg-white hover:bg-amber-600 hover:text-white border border-slate-200 shadow-md hover:shadow-xl text-center flex flex-col items-center justify-center space-y-3 transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="w-12 h-12 rounded-xl bg-amber-50 group-hover:bg-amber-500/20 text-amber-600 group-hover:text-white flex items-center justify-center transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z"></path></svg>
+                        </div>
+                        <span class="text-xs font-bold tracking-wide">Ubah PIN</span>
+                    </button>
+
+                    <button onclick="adminLogout()" class="group p-5 rounded-2xl bg-white hover:bg-rose-600 hover:text-white border border-slate-200 shadow-md hover:shadow-xl text-center flex flex-col items-center justify-center space-y-3 transition-all duration-300 transform hover:-translate-y-1">
+                        <div class="w-12 h-12 rounded-xl bg-rose-50 group-hover:bg-rose-500/20 text-rose-600 group-hover:text-white flex items-center justify-center transition-colors">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
+                        </div>
+                        <span class="text-xs font-bold tracking-wide">Keluar Admin</span>
+                    </button>
+                </div>
+
+                <!-- Area Unggah Excel dengan Desain Premium -->
+                <div class="bg-gradient-to-br from-slate-50 to-indigo-50/50 border border-slate-200 rounded-3xl p-8 shadow-inner space-y-4">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center font-bold text-xs">📁</div>
+                        <div>
+                            <h3 class="font-heading text-sm font-bold text-slate-900">Sinkronisasi Database SDP (Excel)</h3>
+                            <p class="text-xs text-slate-500">Unggah file data warga binaan pemasyarakatan terbaru (.xlsx / .xls)</p>
+                        </div>
+                    </div>
+
+                    <div class="border-2 border-dashed border-indigo-300 hover:border-indigo-500 rounded-2xl p-8 text-center bg-white/80 cursor-pointer transition-all duration-300 group" onclick="document.getElementById('excelFileInput').click()">
+                        <input type="file" id="excelFileInput" accept=".xlsx, .xls" class="hidden" onchange="handleExcelUpload(event)">
+                        <div class="flex flex-col items-center justify-center space-y-2">
+                            <div class="w-14 h-14 bg-indigo-50 group-hover:bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 transition-transform group-hover:scale-110">
+                                <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"></path></svg>
+                            </div>
+                            <p class="text-sm font-bold text-slate-800">Klik untuk memilih file Excel SDP</p>
+                            <p id="fileNameDisplay" class="text-xs text-indigo-600 font-medium">Belum ada file dipilih</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2.1: PANEL ADMIN LIVE CHAT -->
+        <div id="adminLiveChatView" class="glass-card-light shadow-2xl rounded-3xl overflow-hidden hidden">
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-8 py-6 border-b border-slate-800 text-white flex items-center justify-between">
+                <button onclick="switchTab('uploadWbp')" class="px-3.5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold">Kembali</button>
+                <h2 class="font-heading text-lg font-bold">Live Chat Petugas Rutan</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-3 min-h-[500px]">
+                <div class="border-r border-slate-200 p-4 space-y-2 bg-slate-50/50 overflow-y-auto max-h-[500px]" id="adminSessionList">
+                    <p class="text-xs text-slate-400 italic text-center py-4">Memuat sesi chat...</p>
+                </div>
+                <div class="md:col-span-2 flex flex-col justify-between h-[500px]">
+                    <div id="adminChatHeader" class="p-4 border-b border-slate-200 text-xs font-bold text-slate-700">Pilih sesi chat di sebelah kiri.</div>
+                    <div id="adminChatMessages" class="p-4 flex-1 overflow-y-auto space-y-3 text-xs bg-white/50"></div>
+                    <div class="p-3 border-t border-slate-200 flex items-center space-x-2 bg-white">
+                        <input type="text" id="adminChatInput" placeholder="Ketik balasan..." onkeypress="handleAdminChatKeyPress(event)" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs" disabled>
+                        <button onclick="sendAdminChatMessage()" id="adminSendBtn" class="p-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold" disabled>Kirim</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2.5: TABEL DATABASE WBP -->
+        <div id="wbpDatabaseView" class="glass-card-light shadow-2xl rounded-3xl overflow-hidden hidden">
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-8 py-6 border-b border-slate-800 text-white flex flex-col sm:flex-row justify-between items-center gap-4">
+                <div class="flex items-center space-x-3">
+                    <button onclick="switchTab('uploadWbp')" class="px-3.5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold">Kembali</button>
+                    <h2 class="font-heading text-lg font-bold">Database Warga Binaan</h2>
+                </div>
+                <div class="flex items-center space-x-2 w-full sm:w-auto">
+                    <input type="text" id="searchDatabaseInput" placeholder="Cari nama WBP / No. Reg..." oninput="filterDatabaseTable(this.value)" class="w-full sm:w-60 px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <button onclick="loadDatabaseWbpTable()" title="Refresh Data" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-xl border border-slate-700 transition-all flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    </button>
+                    <button onclick="deleteAllWbpData()" title="Hapus Semua WBP" class="p-2.5 bg-rose-900/40 hover:bg-rose-900 text-rose-300 rounded-xl border border-rose-700 transition-all flex items-center justify-center">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            </div>
+            <div class="p-6 overflow-x-auto max-h-[500px]">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-xs uppercase text-slate-500">
+                            <th class="py-3 px-4">Nama WBP</th>
+                            <th class="py-3 px-4">No. Reg</th>
+                            <th class="py-3 px-4">Umur / Kelamin</th>
+                            <th class="py-3 px-4">Perkara / Pasal</th>
+                            <th class="py-3 px-4 text-center">Aksi Lengkap</th>
+                        </tr>
+                    </thead>
+                    <tbody id="wbpDatabaseTableBody" class="divide-y divide-slate-100 text-xs text-slate-700"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- VIEW 3: RIWAYAT PENGUSULAN DENGAN FILTER TANGGAL & EKSPOR EXCEL -->
+        <div id="historyView" class="glass-card-light shadow-2xl rounded-3xl overflow-hidden hidden">
+            <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 px-8 py-6 border-b border-slate-800 text-white space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-center gap-4">
+                    <div class="flex items-center space-x-3 w-full sm:w-auto">
+                        <button onclick="switchTab('uploadWbp')" class="px-3.5 py-2 bg-indigo-600 text-white rounded-xl text-xs font-bold">Kembali</button>
+                        <h2 class="font-heading text-lg font-bold">Riwayat Dokumen Jaminan</h2>
+                    </div>
+                    <div class="flex items-center space-x-2 w-full sm:w-auto">
+                        <input type="text" id="searchHistoryInput" placeholder="Cari nama penjamin / WBP..." oninput="filterHistoryTable()" class="w-full sm:w-48 px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-xs text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="loadHistoryData()" title="Refresh Riwayat" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-sky-400 rounded-xl border border-slate-700 transition-all flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                        </button>
+                        <button onclick="deleteAllHistoryData()" title="Hapus Semua Riwayat" class="p-2.5 bg-rose-900/40 hover:bg-rose-900 text-rose-300 rounded-xl border border-rose-700 transition-all flex items-center justify-center">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Baris Filter Tanggal & Ekspor Excel Per Tanggal -->
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-3 bg-slate-800/80 p-3 rounded-2xl border border-slate-700 text-xs">
+                    <div class="flex items-center space-x-2 w-full sm:w-auto">
+                        <span class="text-slate-300 font-semibold">Dari:</span>
+                        <input type="date" id="filterStartDate" onchange="filterHistoryTable()" class="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded-xl text-white">
+                        <span class="text-slate-300 font-semibold">S/d:</span>
+                        <input type="date" id="filterEndDate" onchange="filterHistoryTable()" class="px-3 py-1.5 bg-slate-900 border border-slate-600 rounded-xl text-white">
+                    </div>
+                    <div>
+                        <button onclick="exportHistoryToExcel()" class="w-full sm:w-auto px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md transition-all flex items-center justify-center space-x-1.5">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            <span>Ekspor Excel Filter</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 overflow-x-auto max-h-[420px]">
+                <table class="w-full text-left border-collapse text-sm">
+                    <thead>
+                        <tr class="border-b border-slate-200 text-xs uppercase text-slate-500">
+                            <th class="py-3 px-4">Tanggal</th>
+                            <th class="py-3 px-4">Program</th>
+                            <th class="py-3 px-4">Warga Binaan</th>
+                            <th class="py-3 px-4">Penjamin</th>
+                            <th class="py-3 px-4 text-center">Aksi Lengkap</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historyTableBody" class="divide-y divide-slate-100 text-xs text-slate-700"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="text-center pb-6 text-slate-500 text-xs font-medium">
+            &copy; 2026 Rutan Kelas IIB Trenggalek. All rights reserved.
+        </div>
+    </div>
+
+    <!-- MODAL DETAIL WBP / RIWAYAT -->
+    <div id="detailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/60 backdrop-blur-md hidden">
+        <div class="bg-white border border-slate-200 max-w-lg w-full mx-4 p-8 rounded-3xl shadow-2xl space-y-6">
+            <div class="flex items-center justify-between border-b border-slate-200 pb-3">
+                <h3 class="font-heading text-base font-bold text-slate-900" id="detailModalTitle">Detail Informasi</h3>
+                <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-700 font-bold">✕</button>
+            </div>
+            <div id="detailModalBody" class="space-y-3 text-xs text-slate-700 font-mono bg-slate-50 p-4 rounded-2xl border border-slate-200"></div>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeDetailModal()" class="px-5 py-2.5 bg-indigo-600 text-white font-heading font-semibold rounded-xl text-xs">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- WIDGET LIVE CHAT -->
+    <div class="fixed bottom-6 right-6 z-50">
+        <button onclick="toggleLiveChat()" id="chatToggleButton" class="w-14 h-14 bg-indigo-600 text-white rounded-full shadow-2xl flex items-center justify-center transform hover:scale-110 transition-all">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"></path></svg>
+        </button>
+
+        <div id="chatWindow" class="absolute bottom-20 right-0 w-80 sm:w-96 bg-white border border-slate-200 rounded-3xl shadow-2xl overflow-hidden hidden flex flex-col">
+            <div class="bg-indigo-900 p-4 text-white flex items-center justify-between">
+                <h4 class="font-heading text-sm font-bold">Live Chat E-THINK</h4>
+                <button onclick="toggleLiveChat()" class="text-slate-300 hover:text-white">✕</button>
+            </div>
+            <div id="userChatMessages" class="p-4 h-72 overflow-y-auto space-y-3 text-xs bg-slate-50"></div>
+            <div class="p-3 border-t border-slate-200 flex items-center space-x-2 bg-white">
+                <input type="text" id="userChatInput" placeholder="Ketik pesan..." onkeypress="handleUserChatKeyPress(event)" class="w-full px-3.5 py-2.5 border border-slate-300 rounded-xl text-xs">
+                <button onclick="sendUserChatMessage()" class="p-2.5 bg-indigo-600 text-white rounded-xl text-xs font-bold">Kirim</button>
+            </div>
+        </div>
+    </div>
+
+    <canvas id="logoCanvas" width="140" height="140" style="display:none;"></canvas>
+
+    <!-- Skrip Utama Aplikasi -->
+    <script>
+        const SUPABASE_URL = 'https://wntnpmprvfzcbntpssjn.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_oSW6YJcel2_C6q06UFBY4A_PtkyZlMJ'; 
+        const { createClient } = supabase;
+        const _supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let dataMasterNarapidana = [];
+        let globalHistoryData = [];
+        let isAdminLoggedIn = sessionStorage.getItem('ethink_admin_auth') === 'true';
+
+        let userSessionId = localStorage.getItem('ethink_user_session_id');
+        if (!userSessionId) {
+            userSessionId = 'USER-' + Math.random().toString(36).substring(2, 9).toUpperCase();
+            localStorage.setItem('ethink_user_session_id', userSessionId);
+        }
+        let activeAdminSessionId = null;
+
+        function updateTimeBasedGreeting() {
+            const hour = new Date().getHours();
+            let greeting = "Selamat Datang";
+            let iconSvg = `<svg class="w-4 h-4 text-amber-500 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42m12.72-12.72l1.42-1.42"></path></svg>`;
+
+            if (hour >= 3 && hour < 11) {
+                greeting = "Selamat Pagi";
+                iconSvg = `<svg class="w-4 h-4 text-amber-500 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v2m6.364 1.636l-1.414 1.414M21 12h-2m-2.364 6.364l-1.414-1.414M12 17a5 5 0 100-10 5 5 0 000 10zm-9 2h18"></path></svg>`;
+            } else if (hour >= 11 && hour < 15) {
+                greeting = "Selamat Siang";
+                iconSvg = `<svg class="w-4 h-4 text-amber-500 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" stroke-width="2"></circle><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2m-2.93-7.07l-1.41 1.41m-11.32 11.32l-1.41 1.41"></path></svg>`;
+            } else if (hour >= 15 && hour < 18) {
+                greeting = "Selamat Sore";
+                iconSvg = `<svg class="w-4 h-4 text-orange-500 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 15l-5-5-5 5m5-5v12M3 17h18M5 9h14M7 5h10"></path></svg>`;
+            } else if (hour >= 18 || hour < 3) {
+                greeting = "Selamat Malam";
+                iconSvg = `<svg class="w-4 h-4 text-indigo-500 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"></path></svg>`;
+            }
+
+            document.getElementById('greetingIcon').innerHTML = iconSvg;
+            document.getElementById('greetingText').textContent = `${greeting}, Sobat E-THINK`;
+        }
+
+        function showToast(message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `pointer-events-auto px-5 py-4 rounded-2xl border shadow-2xl text-xs font-semibold ${type === 'success' ? 'bg-emerald-900 text-emerald-200 border-emerald-700' : 'bg-rose-900 text-rose-200 border-rose-700'}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 4000);
+        }
+
+        function enterAppFromWelcome(event) {
+            const rippleContainer = document.getElementById('waterRippleEffect');
+            rippleContainer.classList.add('ripple-effect');
+            setTimeout(() => {
+                rippleContainer.classList.remove('ripple-effect');
+                switchTab('login');
+            }, 500);
+        }
+
+        function switchTab(tab) {
+            ['welcomeView', 'loginView', 'formView', 'uploadWbpView', 'wbpDatabaseView', 'historyView', 'adminLiveChatView'].forEach(v => {
+                document.getElementById(v).classList.add('hidden');
+            });
+            const mainHeader = document.getElementById('mainHeaderContainer');
+            if (tab === 'welcome') {
+                mainHeader.classList.add('hidden');
+                document.getElementById('welcomeView').classList.remove('hidden');
+            } else {
+                mainHeader.classList.remove('hidden');
+                if (tab === 'login') document.getElementById('loginView').classList.remove('hidden');
+                else if (tab === 'form') document.getElementById('formView').classList.remove('hidden');
+                else if (tab === 'uploadWbp') { if (!isAdminLoggedIn) { promptAdminLoginFromLanding(); return; } document.getElementById('uploadWbpView').classList.remove('hidden'); }
+                else if (tab === 'wbpDatabase') { if (!isAdminLoggedIn) { promptAdminLoginFromLanding(); return; } document.getElementById('wbpDatabaseView').classList.remove('hidden'); loadDatabaseWbpTable(); }
+                else if (tab === 'history') { if (!isAdminLoggedIn) { promptAdminLoginFromLanding(); return; } document.getElementById('historyView').classList.remove('hidden'); loadHistoryData(); }
+                else if (tab === 'adminLiveChat') { if (!isAdminLoggedIn) { promptAdminLoginFromLanding(); return; } document.getElementById('adminLiveChatView').classList.remove('hidden'); loadAdminChatSessions(); }
+            }
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function getPejabatParams() {
+            return {
+                karutan_nama: localStorage.getItem('ethink_karutan_nama') || 'TEDDY HARYANTO',
+                karutan_nip: localStorage.getItem('ethink_karutan_nip') || '19820711 200012 1 003',
+                kasubsi_nama: localStorage.getItem('ethink_kasubsi_nama') || 'ZAINAL FANANI',
+                kasubsi_nip: localStorage.getItem('ethink_kasubsi_nip') || '19850426 200501 1 001'
+            };
+        }
+
+        function openEditPejabatModal() {
+            if (!isAdminLoggedIn) return;
+            const p = getPejabatParams();
+            document.getElementById('editKarutanNama').value = p.karutan_nama;
+            document.getElementById('editKarutanNip').value = p.karutan_nip;
+            document.getElementById('editKasubsiNama').value = p.kasubsi_nama;
+            document.getElementById('editKasubsiNip').value = p.kasubsi_nip;
+            document.getElementById('editPejabatModal').classList.remove('hidden');
+        }
+
+        function closeEditPejabatModal() { document.getElementById('editPejabatModal').classList.add('hidden'); }
+        function savePejabatParameters() {
+            localStorage.setItem('ethink_karutan_nama', document.getElementById('editKarutanNama').value.trim().toUpperCase());
+            localStorage.setItem('ethink_karutan_nip', document.getElementById('editKarutanNip').value.trim());
+            localStorage.setItem('ethink_kasubsi_nama', document.getElementById('editKasubsiNama').value.trim().toUpperCase());
+            localStorage.setItem('ethink_kasubsi_nip', document.getElementById('editKasubsiNip').value.trim());
+            closeEditPejabatModal();
+            showToast('Parameter pejabat diperbarui!');
+        }
+
+        function promptAdminLoginFromLanding() {
+            if (isAdminLoggedIn) { switchTab('uploadWbp'); } 
+            else {
+                document.getElementById('adminPasswordInput').value = '';
+                document.getElementById('adminLoginModal').classList.remove('hidden');
+            }
+        }
+        function closeAdminLoginModal() { document.getElementById('adminLoginModal').classList.add('hidden'); }
+        function executeAdminLogin() {
+            const pass = document.getElementById('adminPasswordInput').value;
+            if (pass === (localStorage.getItem('ethink_admin_pin') || 'rutan123')) {
+                isAdminLoggedIn = true;
+                sessionStorage.setItem('ethink_admin_auth', 'true');
+                closeAdminLoginModal();
+                showToast('Autentikasi admin berhasil!');
+                switchTab('uploadWbp');
+            } else { showToast('Kata sandi salah!', 'error'); }
+        }
+        function handleAdminLoginKeyPress(e) { if (e.key === 'Enter') executeAdminLogin(); }
+        function adminLogout() {
+            isAdminLoggedIn = false;
+            sessionStorage.removeItem('ethink_admin_auth');
+            showToast('Sesi admin berakhir.');
+            switchTab('welcome');
+        }
+
+        function openChangePasswordModal() { if (!isAdminLoggedIn) return; document.getElementById('changePasswordModal').classList.remove('hidden'); }
+        function closeChangePasswordModal() { document.getElementById('changePasswordModal').classList.add('hidden'); }
+        function executeChangePassword() {
+            const oldPass = document.getElementById('oldPasswordInput').value;
+            const newPass = document.getElementById('newPasswordInput').value;
+            if (oldPass !== (localStorage.getItem('ethink_admin_pin') || 'rutan123')) { showToast('Password lama salah!', 'error'); return; }
+            localStorage.setItem('ethink_admin_pin', newPass);
+            closeChangePasswordModal();
+            showToast('PIN admin diperbarui!');
+        }
+
+        async function handleExcelUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            document.getElementById('fileNameDisplay').textContent = file.name;
+            showToast('Membaca file Excel...');
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const jsonRows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    const mapped = jsonRows.map(row => ({
+                        nama_narapidana: String(row['Nama'] || row['NAMA'] || '-').toUpperCase(),
+                        no_register_narapidana: String(row['No Reg Instansi'] || row['NO REG'] || '-').toUpperCase(),
+                        umur_narapidana: parseInt(row['Umur'] || row['UMUR'] || 30) || 30,
+                        pekerjaan_narapidana: String(row['Pekerjaan'] || row['PEKERJAAN'] || 'SWASTA').toUpperCase(),
+                        jenis_kelamin_narapidana: String(row['Jenis Kelamin'] || row['JK'] || 'LAKI - LAKI').toUpperCase().includes('PEREMPUAN') ? 'PEREMPUAN' : 'LAKI - LAKI',
+                        agama_narapidana: String(row['Agama'] || row['AGAMA'] || 'ISLAM').toUpperCase(),
+                        jenis_kejahatan_narapidana: String(row['Kejahatan'] || row['Perkara'] || '').toUpperCase(),
+                        pasal_narapidana: String(row['Pasal'] || '').toUpperCase()
+                    }));
+                    await _supabase.from('data_narapidana').upsert(mapped, { onConflict: 'no_register_narapidana' });
+                    showToast(`Berhasil mengimpor ${mapped.length} data WBP!`);
+                    loadDataNarapidana();
+                } catch (err) { showToast('Gagal impor Excel: ' + err.message, 'error'); }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function loadDatabaseWbpTable() {
+            showToast('Memperbarui data WBP...');
+            const { data } = await _supabase.from('data_narapidana').select('*').order('nama_narapidana', { ascending: true });
+            dataMasterNarapidana = data || [];
+            renderDatabaseTable(dataMasterNarapidana);
+        }
+
+        function renderDatabaseTable(items) {
+            const tbody = document.getElementById('wbpDatabaseTableBody');
+            tbody.innerHTML = '';
+            if (!items.length) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 italic">Tidak ada data WBP ditemukan.</td></tr>`;
+                return;
+            }
+            items.forEach((item) => {
+                const row = document.createElement('tr');
+                row.className = "hover:bg-slate-50 transition-colors";
+                row.innerHTML = `
+                    <td class="py-3 px-4 font-bold text-slate-800">${item.nama_narapidana}</td>
+                    <td class="py-3 px-4 font-mono text-xs text-indigo-600 font-semibold">${item.no_register_narapidana}</td>
+                    <td class="py-3 px-4 text-xs">${item.umur_narapidana} Thn / ${item.jenis_kelamin_narapidana}</td>
+                    <td class="py-3 px-4 text-xs font-mono text-slate-600">${item.jenis_kejahatan_narapidana || '-'} <br><span class="text-[10px] text-indigo-500">${item.pasal_narapidana || ''}</span></td>
+                    <td class="py-3 px-4 text-center space-x-1 whitespace-nowrap">
+                        <button onclick='showWbpDetail(${JSON.stringify(item)})' class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg shadow-sm">Detail</button>
+                        <button onclick="deleteSingleWbp('${item.no_register_narapidana}')" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-lg shadow-sm">Hapus</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function filterDatabaseTable(query) {
+            const filtered = dataMasterNarapidana.filter(item => 
+                item.nama_narapidana.toLowerCase().includes(query.toLowerCase()) || 
+                item.no_register_narapidana.toLowerCase().includes(query.toLowerCase())
+            );
+            renderDatabaseTable(filtered);
+        }
+
+        async function deleteSingleWbp(reg) {
+            if (!confirm(`Hapus WBP dengan No. Register ${reg}?`)) return;
+            await _supabase.from('data_narapidana').delete().eq('no_register_narapidana', reg);
+            loadDatabaseWbpTable(); loadDataNarapidana(); showToast('WBP berhasil dihapus.');
+        }
+
+        async function deleteAllWbpData() {
+            if (!confirm('PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA data WBP di database?')) return;
+            const { error } = await _supabase.from('data_narapidana').delete().neq('no_register_narapidana', '___DUMMY_NONE___');
+            if (error) {
+                showToast('Gagal menghapus semua data WBP.', 'error');
+            } else {
+                loadDatabaseWbpTable();
+                loadDataNarapidana();
+                showToast('Seluruh data WBP berhasil dikosongkan.');
+            }
+        }
+
+        async function loadHistoryData() {
+            showToast('Memperbarui riwayat...');
+            const { data, error } = await _supabase.from('pengusulan_integrasi').select('*').order('created_at', { ascending: false });
+            if (error) {
+                showToast('Gagal memuat riwayat: ' + error.message, 'error');
+                globalHistoryData = [];
+            } else {
+                globalHistoryData = data || [];
+            }
+            renderHistoryTable(globalHistoryData);
+        }
+
+        function renderHistoryTable(items) {
+            const tbody = document.getElementById('historyTableBody');
+            tbody.innerHTML = '';
+            if (!items.length) { 
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-8 text-slate-400 italic">Belum ada riwayat pengusulan.</td></tr>`; 
+                return; 
+            }
+            items.forEach(item => {
+                const row = document.createElement('tr');
+                row.className = "hover:bg-slate-50 transition-colors";
+                row.innerHTML = `
+                    <td class="py-3 px-4 text-xs text-slate-500">${item.tanggal_pembuatan || '-'}</td>
+                    <td class="py-3 px-4"><span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-600">${item.proses_pengusulan}</span></td>
+                    <td class="py-3 px-4 font-bold text-slate-800">${item.nama_narapidana}<br><span class="font-mono text-[10px] text-indigo-600">${item.no_register_narapidana}</span></td>
+                    <td class="py-3 px-4 text-xs">${item.nama_penjamin}<br><span class="text-slate-400 text-[10px]">${item.no_handphone}</span></td>
+                    <td class="py-3 px-4 text-center space-x-1 whitespace-nowrap">
+                        <button onclick='previewPdfFromHistory(${JSON.stringify(item)})' class="px-2.5 py-1.5 bg-sky-50 hover:bg-sky-100 text-sky-700 text-xs font-semibold rounded-lg shadow-sm">Cetak PDF</button>
+                        <button onclick='showHistoryDetail(${JSON.stringify(item)})' class="px-2.5 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg shadow-sm">Detail</button>
+                        <button onclick="deleteHistoryItem('${item.id}')" class="px-2.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 text-xs font-semibold rounded-lg shadow-sm">Hapus</button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function getFilteredHistoryItems() {
+            const query = (document.getElementById('searchHistoryInput').value || '').toLowerCase();
+            const startDate = document.getElementById('filterStartDate').value;
+            const endDate = document.getElementById('filterEndDate').value;
+
+            return globalHistoryData.filter(item => {
+                const matchQuery = 
+                    item.nama_narapidana.toLowerCase().includes(query) || 
+                    item.nama_penjamin.toLowerCase().includes(query) ||
+                    item.no_register_narapidana.toLowerCase().includes(query);
+
+                if (!matchQuery) return false;
+
+                if (startDate || endDate) {
+                    if (!item.created_at) return false;
+                    const itemDateStr = item.created_at.substring(0, 10);
+                    if (startDate && itemDateStr < startDate) return false;
+                    if (endDate && itemDateStr > endDate) return false;
+                }
+                return true;
+            });
+        }
+
+        function filterHistoryTable() {
+            const filtered = getFilteredHistoryItems();
+            renderHistoryTable(filtered);
+        }
+
+        function exportHistoryToExcel() {
+            const filtered = getFilteredHistoryItems();
+            if (!filtered.length) {
+                showToast('Tidak ada data untuk diexport pada rentang tanggal tersebut!', 'error');
+                return;
+            }
+
+            const excelRows = filtered.map((item, index) => ({
+                'No': index + 1,
+                'Tanggal': item.tanggal_pembuatan || '-',
+                'Program Usulan': item.proses_pengusulan || '-',
+                'Nama WBP': item.nama_narapidana || '-',
+                'No. Register WBP': item.no_register_narapidana || '-',
+                'Nama Penjamin': item.nama_penjamin || '-',
+                'Hubungan Penjamin': item.hubungan_penjamin || '-',
+                'No. HP / WhatsApp': item.no_handphone || '-',
+                'Alamat Penjamin': item.alamat_penjamin || '-'
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(excelRows);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Riwayat Jaminan");
+            
+            const dateStr = new Date().toISOString().slice(0,10);
+            XLSX.writeFile(workbook, `Rekap_Riwayat_E-THINK_${dateStr}.xlsx`);
+            showToast('File Excel berhasil diunduh!');
+        }
+
+        async function deleteHistoryItem(id) {
+            if (!confirm('Hapus riwayat dokumen ini?')) return;
+            await _supabase.from('pengusulan_integrasi').delete().eq('id', id);
+            loadHistoryData();
+            showToast('Riwayat berhasil dihapus.');
+        }
+
+        async function deleteAllHistoryData() {
+            if (!confirm('PERINGATAN: Apakah Anda yakin ingin MENGHAPUS SEMUA riwayat dokumen jaminan?')) return;
+            const { error } = await _supabase.from('pengusulan_integrasi').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+            if (error) {
+                showToast('Gagal menghapus semua riwayat.', 'error');
+            } else {
+                loadHistoryData();
+                showToast('Seluruh riwayat dokumen berhasil dikosongkan.');
+            }
+        }
+
+        function showWbpDetail(item) {
+            document.getElementById('detailModalTitle').textContent = `Detail WBP: ${item.nama_narapidana}`;
+            document.getElementById('detailModalBody').innerHTML = `
+                <p><span class="font-bold text-indigo-600">No. Register:</span> ${item.no_register_narapidana}</p>
+                <p><span class="font-bold text-indigo-600">Nama Lengkap:</span> ${item.nama_narapidana}</p>
+                <p><span class="font-bold text-indigo-600">Umur / Kelamin:</span> ${item.umur_narapidana} Tahun / ${item.jenis_kelamin_narapidana}</p>
+                <p><span class="font-bold text-indigo-600">Pekerjaan:</span> ${item.pekerjaan_narapidana}</p>
+                <p><span class="font-bold text-indigo-600">Agama:</span> ${item.agama_narapidana}</p>
+                <p><span class="font-bold text-indigo-600">Jenis Perkara:</span> ${item.jenis_kejahatan_narapidana || '-'}</p>
+                <p><span class="font-bold text-indigo-600">Pasal:</span> ${item.pasal_narapidana || '-'}</p>
+            `;
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function showHistoryDetail(item) {
+            document.getElementById('detailModalTitle').textContent = `Detail Dokumen: ${item.nama_narapidana}`;
+            document.getElementById('detailModalBody').innerHTML = `
+                <p><span class="font-bold text-indigo-600">Program:</span> ${item.proses_pengusulan}</p>
+                <p><span class="font-bold text-indigo-600">Tanggal Dibuat:</span> ${item.tanggal_pembuatan}</p>
+                <p><span class="font-bold text-indigo-600">Nama WBP:</span> ${item.nama_narapidana} (${item.no_register_narapidana})</p>
+                <p><span class="font-bold text-indigo-600">Nama Penjamin:</span> ${item.nama_penjamin} (${item.hubungan_penjamin})</p>
+                <p><span class="font-bold text-indigo-600">No. WhatsApp:</span> ${item.no_handphone}</p>
+                <p><span class="font-bold text-indigo-600">Alamat Penjamin:</span> ${item.alamat_penjamin}</p>
+            `;
+            document.getElementById('detailModal').classList.remove('hidden');
+        }
+
+        function closeDetailModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+        }
+
+        function validateAndNextStep(step) {
+            if (step === 1) {
+                const nama = document.getElementById('nama_penjamin').value.trim();
+                const umur = document.getElementById('umur_penjamin').value.trim();
+                const pek = document.getElementById('pekerjaan_penjamin').value.trim();
+                const hub = document.getElementById('hubungan_penjamin').value.trim();
+                const jalan = document.getElementById('alamat_jalan').value.trim();
+                const rt = document.getElementById('alamat_rt').value.trim();
+                const rw = document.getElementById('alamat_rw').value.trim();
+                const desa = document.getElementById('alamat_desa').value.trim();
+                const kec = document.getElementById('alamat_kecamatan').value.trim();
+                const hp = document.getElementById('no_handphone').value.trim();
+                const email = document.getElementById('email_penjamin').value.trim();
+
+                if (!nama || !umur || !pek || !hub || !jalan || !rt || !rw || !desa || !kec || !hp || !email) {
+                    showToast('Harap lengkapi semua kolom data penjamin!', 'error');
+                    return;
+                }
+                nextStep(1);
+            } else if (step === 2) {
+                const wbpName = document.getElementById('nama_narapidana').value;
+                if (!wbpName) {
+                    showToast('Harap pilih Warga Binaan terlebih dahulu!', 'error');
+                    return;
+                }
+                updateLivePreview();
+                nextStep(2);
+            }
+        }
+
+        function nextStep(s) {
+            document.getElementById(`wizardStep${s}`).classList.add('hidden');
+            document.getElementById(`wizardStep${s+1}`).classList.remove('hidden');
+            
+            document.getElementById(`stepIndicator${s}`).className = "p-3 rounded-2xl bg-slate-200 text-slate-600 text-center font-bold text-xs shadow-sm transition-all";
+            document.getElementById(`stepIndicator${s+1}`).className = "p-3 rounded-2xl bg-indigo-600 text-white text-center font-bold text-xs shadow-md transition-all";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function prevStep(s) {
+            document.getElementById(`wizardStep${s}`).classList.add('hidden');
+            document.getElementById(`wizardStep${s-1}`).classList.remove('hidden');
+            
+            document.getElementById(`stepIndicator${s}`).className = "p-3 rounded-2xl bg-slate-200 text-slate-600 text-center font-bold text-xs shadow-sm transition-all";
+            document.getElementById(`stepIndicator${s-1}`).className = "p-3 rounded-2xl bg-indigo-600 text-white text-center font-bold text-xs shadow-md transition-all";
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function loadDataNarapidana() {
+            const { data } = await _supabase.from('data_narapidana').select('*');
+            dataMasterNarapidana = data || [];
+            const sel = document.getElementById('nama_narapidana');
+            sel.innerHTML = '<option value="">-- Pilih Nama Warga Binaan --</option>';
+            dataMasterNarapidana.forEach(n => {
+                const opt = document.createElement('option');
+                opt.value = n.nama_narapidana;
+                opt.textContent = `${n.nama_narapidana} (${n.no_register_narapidana})`;
+                sel.appendChild(opt);
+            });
+        }
+
+        function filterWbpOptions(query) {
+            const dropdown = document.getElementById('wbpDropdownList');
+            if (!query.trim()) {
+                dropdown.classList.add('hidden');
+                return;
+            }
+            const filtered = dataMasterNarapidana.filter(n => 
+                n.nama_narapidana.toLowerCase().includes(query.toLowerCase()) || 
+                n.no_register_narapidana.toLowerCase().includes(query.toLowerCase())
+            );
+            dropdown.innerHTML = '';
+            if (filtered.length === 0) {
+                dropdown.innerHTML = `<div class="p-3 text-xs text-slate-400 italic">Tidak ditemukan WBP yang cocok.</div>`;
+            } else {
+                filtered.forEach(n => {
+                    const item = document.createElement('div');
+                    item.className = "p-3 text-xs hover:bg-indigo-50 cursor-pointer flex justify-between items-center";
+                    item.innerHTML = `<span class="font-bold text-slate-800">${n.nama_narapidana}</span><span class="font-mono text-indigo-600">${n.no_register_narapidana}</span>`;
+                    item.onclick = () => selectWbpItem(n);
+                    dropdown.appendChild(item);
+                });
+            }
+            dropdown.classList.remove('hidden');
+        }
+
+        function selectWbpItem(n) {
+            document.getElementById('searchWbpInput').value = `${n.nama_narapidana} (${n.no_register_narapidana})`;
+            document.getElementById('nama_narapidana').value = n.nama_narapidana;
+            document.getElementById('no_register_narapidana').value = n.no_register_narapidana;
+            document.getElementById('umur_narapidana').value = n.umur_narapidana;
+            document.getElementById('pekerjaan_narapidana').value = n.pekerjaan_narapidana;
+            document.getElementById('jenis_kelamin_narapidana').value = n.jenis_kelamin_narapidana;
+            document.getElementById('agama_narapidana').value = n.agama_narapidana;
+            document.getElementById('jenis_kejahatan_narapidana').value = n.jenis_kejahatan_narapidana;
+            document.getElementById('pasal_narapidana').value = n.pasal_narapidana;
+            document.getElementById('wbpDropdownList').classList.add('hidden');
+        }
+
+        function updateLivePreview() {
+            const container = document.getElementById('livePreviewContent');
+            const namaPenjamin = document.getElementById('nama_penjamin').value.toUpperCase();
+            const hubPenjamin = document.getElementById('hubungan_penjamin').value.toUpperCase();
+            const namaWbp = document.getElementById('nama_narapidana').value.toUpperCase();
+            const noReg = document.getElementById('no_register_narapidana').value.toUpperCase();
+            const program = document.getElementById('proses_pengusulan').value;
+
+            container.innerHTML = `
+                <div><span class="text-sky-400 font-bold">Program:</span> ${program}</div>
+                <div><span class="text-sky-400 font-bold">WBP:</span> ${namaWbp} (${noReg})</div>
+                <div><span class="text-sky-400 font-bold">Penjamin:</span> ${namaPenjamin}</div>
+                <div><span class="text-sky-400 font-bold">Hubungan:</span> ${hubPenjamin}</div>
+            `;
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateTimeBasedGreeting();
+            loadDataNarapidana();
+            hitungJenisPengusulan();
+            switchTab('welcome');
+        });
+
+        const inputTahun = document.getElementById('pidana_tahun');
+        const inputBulan = document.getElementById('pidana_bulan');
+        const inputHari = document.getElementById('pidana_hari');
+        const prosesSelect = document.getElementById('proses_pengusulan');
+
+        function hitungJenisPengusulan() {
+            const t = parseInt(inputTahun.value) || 0;
+            const b = parseInt(inputBulan.value) || 0;
+            const h = parseInt(inputHari.value) || 0;
+            const totalBulan = (t * 12) + b;
+            if (t === 0 && b === 0 && h === 0) prosesSelect.value = 'Cuti Menjelang Bebas';
+            else if (totalBulan > 18) prosesSelect.value = 'Pembebasan Bersyarat';
+            else prosesSelect.value = 'Cuti Bersyarat';
+        }
+        [inputTahun, inputBulan, inputHari].forEach(el => el.addEventListener('input', hitungJenisPengusulan));
+
+        function toggleLiveChat() {
+            document.getElementById('chatWindow').classList.toggle('hidden');
+            if (!document.getElementById('chatWindow').classList.contains('hidden')) loadUserChatMessages();
+        }
+
+        async function loadUserChatMessages() {
+            const { data } = await _supabase.from('live_chat').select('*').eq('session_id', userSessionId).order('created_at', { ascending: true });
+            const container = document.getElementById('userChatMessages');
+            container.innerHTML = `<div class="bg-indigo-50 p-3 rounded-xl text-slate-700">Halo Sobat E-THINK! Silakan tanyakan kendala atau informasi pengusulan integrasi Anda di sini.</div>`;
+            (data || []).forEach(msg => {
+                const isUser = msg.sender_type === 'user';
+                const bubble = document.createElement('div');
+                bubble.className = isUser ? "flex justify-end" : "flex justify-start";
+                bubble.innerHTML = `<div class="p-2.5 rounded-xl max-w-[80%] ${isUser ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-800'}">${msg.message}</div>`;
+                container.appendChild(bubble);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendUserChatMessage() {
+            const input = document.getElementById('userChatInput');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            await _supabase.from('live_chat').insert([{ session_id: userSessionId, sender_type: 'user', message: text }]);
+            loadUserChatMessages();
+        }
+        function handleUserChatKeyPress(e) { if (e.key === 'Enter') sendUserChatMessage(); }
+
+        async function loadAdminChatSessions() {
+            const { data } = await _supabase.from('live_chat').select('*').order('created_at', { ascending: false });
+            const sessionMap = new Map();
+            (data || []).forEach(item => { if (!sessionMap.has(item.session_id)) sessionMap.set(item.session_id, item); });
+            const listContainer = document.getElementById('adminSessionList');
+            listContainer.innerHTML = '';
+            if (sessionMap.size === 0) { listContainer.innerHTML = `<p class="text-xs text-slate-400 italic text-center py-4">Belum ada sesi chat.</p>`; return; }
+            sessionMap.forEach((val, sessionId) => {
+                const btn = document.createElement('div');
+                btn.className = `p-3 rounded-xl border cursor-pointer ${activeAdminSessionId === sessionId ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-white border-slate-200'}`;
+                btn.innerHTML = `<div class="font-bold text-xs">Sesi: ${sessionId}</div><div class="text-[10px] truncate">Pesan: ${val.message}</div>`;
+                btn.onclick = () => selectAdminSession(sessionId);
+                listContainer.appendChild(btn);
+            });
+        }
+
+        async function selectAdminSession(sessionId) {
+            activeAdminSessionId = sessionId;
+            document.getElementById('adminChatHeader').textContent = `Percakapan: ${sessionId}`;
+            document.getElementById('adminChatInput').disabled = false;
+            document.getElementById('adminSendBtn').disabled = false;
+            const { data } = await _supabase.from('live_chat').select('*').eq('session_id', sessionId).order('created_at', { ascending: true });
+            const container = document.getElementById('adminChatMessages');
+            container.innerHTML = '';
+            (data || []).forEach(msg => {
+                const isAdmin = msg.sender_type === 'admin';
+                const bubble = document.createElement('div');
+                bubble.className = isAdmin ? "flex justify-end" : "flex justify-start";
+                bubble.innerHTML = `<div class="p-2.5 rounded-xl max-w-[80%] ${isAdmin ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-800'}">${msg.message}</div>`;
+                container.appendChild(bubble);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        async function sendAdminChatMessage() {
+            if (!activeAdminSessionId) return;
+            const input = document.getElementById('adminChatInput');
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            await _supabase.from('live_chat').insert([{ session_id: activeAdminSessionId, sender_type: 'admin', message: text }]);
+            selectAdminSession(activeAdminSessionId);
+        }
+        function handleAdminChatKeyPress(e) { if (e.key === 'Enter') sendAdminChatMessage(); }
+
+        function generateModernLogoDataUrl() {
+            const canvas = document.getElementById('logoCanvas');
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#0f172a'; ctx.fillRect(0, 0, 140, 140);
+            ctx.fillStyle = '#38bdf8'; ctx.font = 'bold 36px sans-serif'; ctx.fillText('E-TH', 20, 85);
+            return canvas.toDataURL('image/png');
+        }
+
+        function buildPdfDocument(formData) {
+            const pejabat = getPejabatParams();
+            const trackingCode = `ETHINK-${Math.floor(100000 + Math.random() * 900000)}`;
+            const logoUrl = generateModernLogoDataUrl();
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const pageWidth = 210;
+
+            const drawField = (label, value, currentY, labelX = 20, colonX = 65, valueX = 70, maxW = 120) => {
+                doc.text(label, labelX, currentY);
+                doc.text(":", colonX, currentY);
+                const lines = doc.splitTextToSize(String(value || '-'), maxW);
+                doc.text(lines, valueX, currentY);
+                return currentY + (lines.length * 5.5);
+            };
+
+            // ==================== HALAMAN 1 ====================
+            doc.setFont("times", "bold"); doc.setFontSize(11);
+            doc.text("SURAT JAMINAN KESANGGUPAN KELUARGA", pageWidth/2, 18, { align: "center" });
+            doc.setFont("times", "normal"); doc.setFontSize(9.5);
+            doc.text("(Psl. 83 ayat (1) huruf h Peraturan Menteri Hukum dan HAM R.I. No. 3 Tahun 2018)", pageWidth/2, 23, { align: "center" });
+
+            let y = 32;
+            doc.text("Yang bertanda tangan di bawah ini, kami :", 20, y); y += 7;
+            y = drawField("N a m a", formData.nama_penjamin, y);
+            y = drawField("Umur", formData.umur_penjamin + " Tahun", y);
+            y = drawField("Pekerjaan", formData.pekerjaan_penjamin, y);
+            y = drawField("Hubungan dgn Narapidana", formData.hubungan_penjamin, y);
+            y = drawField("Alamat PB", formData.alamat_penjamin, y);
+            y = drawField("No. Telp", formData.no_handphone, y);
+
+            y += 4;
+            doc.text("Adalah Sebagai Penjamin dari Narapidana :", 20, y); y += 7;
+            y = drawField("N a m a", formData.nama_narapidana, y);
+            y = drawField("Umur", formData.umur_narapidana + " Tahun", y);
+            y = drawField("Menjalani Pidana di", "Rutan Trenggalek", y);
+
+            y += 4;
+            doc.text("Dengan ini saya menyatakan :", 20, y); y += 6;
+
+            const p1_1 = `Sanggup menjamin sepenuhnya bahwa apabila Narapidana tersebut diberikan ijin ${formData.proses_pengusulan} yang bersangkutan tidak akan melarikan diri dan atau tidak melakukan perbuatan melanggar hukum lagi ; dan`;
+            const p1_1_lines = doc.splitTextToSize(p1_1, 162);
+            doc.text("1.", 20, y); doc.text(p1_1_lines, 26, y); y += (p1_1_lines.length * 5) + 2;
+
+            const p1_2 = `Sanggup membantu dalam membimbing dan turut mengawasi Narapidana yang bersangkutan selama mengikuti program ${formData.proses_pengusulan}.`;
+            const p1_2_lines = doc.splitTextToSize(p1_2, 162);
+            doc.text("2.", 20, y); doc.text(p1_2_lines, 26, y); y += (p1_2_lines.length * 5) + 4;
+
+            doc.text("Demikian Surat Jaminan ini dibuat dengan sesungguhnya untuk dipergunakan seperlunya.", 20, y);
+
+            y += 12;
+            const centerX = pageWidth / 2;
+            doc.text(`Trenggalek, ${formData.tanggal_pembuatan}`, centerX, y, {align: 'center'}); y += 5;
+            doc.text("PENJAMIN", centerX, y, {align: 'center'}); y += 10;
+            doc.setTextColor(180, 0, 0); doc.text("Materai 10.000", centerX, y, {align: 'center'});
+            doc.setTextColor(0, 0, 0); y += 12;
+            doc.text(`(${formData.nama_penjamin})`, centerX, y, {align: 'center'});
+
+            y += 8;
+            doc.text("KEPALA RUTAN TRENGGALEK", 45, y, {align: 'center'});
+            doc.text("KEPALA DESA / KELURAHAN", 160, y, {align: 'center'});
+            y += 22;
+            doc.text(pejabat.karutan_nama, 45, y, {align: 'center'});
+            doc.text("......................................................", 160, y, {align: 'center'});
+            y += 5;
+            doc.text(`NIP. ${pejabat.karutan_nip}`, 45, y, {align: 'center'});
+
+            // ==================== HALAMAN 2 ====================
+            doc.addPage();
+            doc.setFont("times", "bold"); doc.setFontSize(11);
+            doc.text("SURAT PERNYATAAN NARAPIDANA", pageWidth/2, 18, { align: "center" });
+            doc.setFont("times", "normal"); doc.setFontSize(9.5);
+            doc.text("(Psl. 83 ayat (1) huruf g Peraturan Menteri Hukum dan HAM RI No. 3 Tahun 2018)", pageWidth/2, 23, { align: "center" });
+
+            y = 31;
+            doc.text("Yang bertanda tangan di bawah ini :", 20, y); y += 6;
+            y = drawField("Nama / Umur / Jenis kelamin", `${formData.nama_narapidana} / ${formData.umur_narapidana} Tahun / ${formData.jenis_kelamin_narapidana}`, y, 20, 75, 78, 110);
+            y = drawField("Agama / Kewarganegaraan", `${formData.agama_narapidana} / Indonesia`, y, 20, 75, 78, 110);
+            y = drawField("Perkara", `${formData.jenis_kejahatan_narapidana} / ${formData.pasal_narapidana}`, y, 20, 75, 78, 110);
+            y = drawField("Pidana", `${formData.pidana_tahun || 0} Tahun ${formData.pidana_bulan ? formData.pidana_bulan + ' Bulan ' : ''}${formData.pidana_hari ? formData.pidana_hari + ' Hari' : ''}`, y, 20, 75, 78, 110);
+            y = drawField("Nama Penjamin / Hubungan", `${formData.nama_penjamin} (${formData.hubungan_penjamin})`, y, 20, 75, 78, 110);
+            y = drawField("Alamat Menjalani", formData.alamat_penjamin, y, 20, 75, 78, 110);
+
+            y += 3;
+            const p2_intro = `Adalah Warga Binaan Pemasyarakatan pada Rutan Trenggalek, dengan ini menyatakan atas kesadaran sendiri dan tanpa paksaan pihak manapun :`;
+            const p2_intro_lines = doc.splitTextToSize(p2_intro, 170);
+            doc.text(p2_intro_lines, 20, y); y += (p2_intro_lines.length * 5) + 2;
+
+            const p2_1 = `Selama proses pengusulan ${formData.proses_pengusulan}, saya akan mengikuti program pembinaan dan tetap bekerja sebagaimana mestinya ;`;
+            const p2_1_lines = doc.splitTextToSize(p2_1, 162);
+            doc.text("1.", 20, y); doc.text(p2_1_lines, 28, y); y += (p2_1_lines.length * 5) + 2;
+
+            const p2_2 = `Menyadari dan menyesali sepenuhnya perbuatan yang pernah saya lakukan dan berjanji tidak akan mengulangi lagi perbuatan yang melanggar hukum ;`;
+            const p2_2_lines = doc.splitTextToSize(p2_2, 162);
+            doc.text("2.", 20, y); doc.text(p2_2_lines, 28, y); y += (p2_2_lines.length * 5) + 2;
+
+            const p2_3 = `Berjanji tidak akan melarikan diri selama menunggu proses pengusulan maupun selama menjalani ${formData.proses_pengusulan} ;`;
+            const p2_3_lines = doc.splitTextToSize(p2_3, 162);
+            doc.text("3.", 20, y); doc.text(p2_3_lines, 28, y); y += (p2_3_lines.length * 5) + 2;
+
+            const p2_sanksi = `Apabila di kemudian hari baik disengaja maupun tidak disengaja saya melakukan perbuatan yang sama atau melanggar hukum lagi ataupun saya melalaikan pernyataan tersebut diatas, maka saya bersedia menerima sanksi berupa pembatalan usulan ${formData.proses_pengusulan} dan pencabutan surat keputusan ${formData.proses_pengusulan}.`;
+            const p2_sanksi_lines = doc.splitTextToSize(p2_sanksi, 170);
+            doc.text(p2_sanksi_lines, 20, y); y += (p2_sanksi_lines.length * 5) + 2;
+
+            const p2_demikian = `Demikian pernyataan ini saya buat dengan penuh kesadaran dan merupakan pengikat diri saya selama menunggu proses pengusulan maupun selama menjalani ${formData.proses_pengusulan}.`;
+            const p2_demikian_lines = doc.splitTextToSize(p2_demikian, 170);
+            doc.text(p2_demikian_lines, 20, y); 
+
+            y += 10;
+            doc.text(`Trenggalek, ${formData.tanggal_pembuatan}`, centerX, y, {align: 'center'}); y += 4;
+            doc.text("Yang Membuat Pernyataan,", centerX, y, {align: 'center'}); y += 8;
+            doc.setTextColor(180, 0, 0); doc.text("Materai 10.000", centerX, y, {align: 'center'});
+            doc.setTextColor(0, 0, 0); y += 10;
+            doc.text(formData.nama_narapidana, centerX, y, {align: 'center'}); y += 4;
+            doc.text(`No. Reg. ${formData.no_register_narapidana}`, centerX, y, {align: 'center'});
+
+            y += 6;
+            doc.text("KEPALA RUTAN TRENGGALEK", 45, y, {align: 'center'});
+            doc.text("KEPALA DESA / KELURAHAN", 160, y, {align: 'center'});
+            y += 20;
+            doc.text(pejabat.karutan_nama, 45, y, {align: 'center'});
+            doc.text("......................................................", 160, y, {align: 'center'});
+            y += 5;
+            doc.text(`NIP. ${pejabat.karutan_nip}`, 45, y, {align: 'center'});
+
+            // ==================== HALAMAN 3 ====================
+            doc.addPage();
+            doc.setFont("times", "normal"); doc.setFontSize(9.5);
+            y = 22;
+            doc.text(`Trenggalek, ${formData.tanggal_pembuatan}`, 135, y); y += 10;
+            doc.text(`Perihal : Permohonan Untuk Mendapatkan ${formData.proses_pengusulan}`, 20, y); y += 6;
+
+            doc.text("Kepada :", 20, y); y += 5;
+            doc.text("Yth. Kepala Rutan Trenggalek", 20, y); y += 5;
+            doc.text("Di -", 30, y); y += 5;
+            doc.text("TRENGGALEK", 40, y);
+            doc.line(40, y+1, 68, y+1); y += 12;
+
+            doc.text("Yang bertanda tangan di bawah ini :", 20, y); y += 6;
+            y = drawField("N a m a", formData.nama_penjamin, y);
+            y = drawField("Umur", formData.umur_penjamin + " Tahun", y);
+            y = drawField("Pekerjaan", formData.pekerjaan_penjamin, y);
+            y = drawField("Alamat", formData.alamat_penjamin, y);
+
+            y += 4;
+            doc.text(`Adalah ${formData.hubungan_penjamin} dari Narapidana :`, 20, y); y += 7;
+            y = drawField("Nama", formData.nama_narapidana, y);
+            y = drawField("Umur", formData.umur_narapidana + " Tahun", y);
+            y = drawField("Register", formData.no_register_narapidana, y);
+
+            y += 4;
+            const p3_1 = `Yang sedang menjalani pidana di Rutan Trenggalek, mengajukan permohonan agar kepada narapidana tersebut diusulkan mendapatkan ${formData.proses_pengusulan}.`;
+            const p3_1_lines = doc.splitTextToSize(p3_1, 170);
+            doc.text(p3_1_lines, 20, y); y += (p3_1_lines.length * 5) + 6;
+
+            doc.text("Demikian atas terkabulnya permohonan ini, kami menghaturkan terima kasih.", 20, y);
+
+            y += 20;
+            doc.text("Pemohon,", 135, y, {align: 'center'});
+            y += 24;
+            doc.text(formData.nama_penjamin, 135, y, {align: 'center'});
+
+            // ==================== HALAMAN 4 ====================
+            doc.addPage();
+            y = 22;
+            doc.setFont("times", "bold"); doc.setFontSize(11);
+            doc.text("SURAT PERNYATAAN", pageWidth/2, y, { align: "center" });
+            doc.line(80, y+1, 130, y+1);
+            doc.setFont("times", "normal"); doc.setFontSize(9.5);
+            y += 10;
+
+            doc.text("Yang bertanda tangan di bawah ini :", 20, y); y += 6;
+
+            doc.text("I.", 20, y);
+            y = drawField("N a m a", formData.nama_narapidana, y, 28, 60, 65);
+            y = drawField("Register", formData.no_register_narapidana, y, 28, 60, 65);
+            y = drawField("Umur", formData.umur_narapidana + " Tahun", y, 28, 60, 65);
+            y = drawField("Pekerjaan", formData.pekerjaan_narapidana, y, 28, 60, 65);
+            y = drawField("Alamat", "Rutan Trenggalek", y, 28, 60, 65);
+
+            y += 4;
+            doc.text("II.", 20, y);
+            y = drawField("N a m a", formData.nama_penjamin, y, 28, 60, 65);
+            y = drawField("Umur", formData.umur_penjamin + " Tahun", y, 28, 60, 65);
+            y = drawField("Pekerjaan", formData.pekerjaan_penjamin, y, 28, 60, 65);
+            y = drawField("Alamat", formData.alamat_penjamin, y, 28, 60, 65);
+
+            y += 6;
+            const p4_1 = `Dengan ini menyatakan bahwa dalam pengurusan usulan ${formData.proses_pengusulan} tidak dipungut biaya oleh petugas / pegawai Rutan.`;
+            const p4_1_lines = doc.splitTextToSize(p4_1, 170);
+            doc.text(p4_1_lines, 20, y); y += (p4_1_lines.length * 5) + 4;
+
+            doc.text("Demikian Pernyataan ini kami buat dengan sebenarnya.", 20, y);
+
+            y += 10;
+            doc.text(`Trenggalek, ${formData.tanggal_pembuatan}`, pageWidth/2, y, {align: 'center'}); y += 8;
+
+            doc.setTextColor(180, 0, 0);
+            doc.text("Materai 10.000", 50, y, {align: 'center'});
+            doc.text("Materai 10.000", 160, y, {align: 'center'});
+            doc.setTextColor(0, 0, 0); y += 14;
+
+            doc.text(formData.nama_narapidana, 50, y, {align: 'center'});
+            doc.text(formData.nama_penjamin, 160, y, {align: 'center'});
+
+            y += 12;
+            doc.text("Mengetahui,", pageWidth/2, y, {align: 'center'}); y += 5;
+            doc.text("Ka. Subsie Pelayanan Tahanan", pageWidth/2, y, {align: 'center'});
+            
+            y += 22;
+            doc.text(pejabat.kasubsi_nama, pageWidth/2, y, {align: 'center'});
+            y += 5;
+            doc.text(`NIP. ${pejabat.kasubsi_nip}`, pageWidth/2, y, {align: 'center'});
+
+            // --- SISIPKAN QR CODE YANG MEMUAT FILE PDF PADA SEMUA HALAMAN ---
+            const totalPages = doc.internal.getNumberOfPages();
+            const pdfDataUri = doc.output('datauristring');
+            let qrDataUrl = '';
+            try {
+                const qr = qrcode(0, 'L');
+                qr.addData(pdfDataUri);
+                qr.make();
+                qrDataUrl = qr.createDataURL(4, 0);
+            } catch (err) {
+                try {
+                    const fallbackPayload = `E-THINK Rutan Trenggalek\nNo: ${trackingCode}\nProgram: ${formData.proses_pengusulan}\nWBP: ${formData.nama_narapidana} (${formData.no_register_narapidana})\nPenjamin: ${formData.nama_penjamin}`;
+                    const qrFallback = qrcode(0, 'M');
+                    qrFallback.addData(fallbackPayload);
+                    qrFallback.make();
+                    qrDataUrl = qrFallback.createDataURL(4, 0);
+                } catch(e2) {
+                    qrDataUrl = '';
+                }
+            }
+
+            for (let i = 1; i <= totalPages; i++) {
+                doc.setPage(i);
+                doc.setDrawColor(203, 213, 225); 
+                doc.line(20, 268, pageWidth - 20, 268);
+                doc.addImage(logoUrl, 'PNG', 20, 271, 7, 7);
+                doc.setFont("times", "bold"); doc.setFontSize(8); doc.text("Aplikasi E-THINK", 29, 275);
+                doc.setFont("times", "normal"); doc.setFontSize(6.5); doc.text("Sistem Pengusulan Integrasi Digital Terpadu - Rutan Kelas IIB Trenggalek", 29, 279);
+                try {
+                    if (qrDataUrl) {
+                        doc.addImage(qrDataUrl, 'PNG', pageWidth - 32, 269, 12, 12);
+                    }
+                } catch(e) {}
+                doc.setFont("times", "italic"); doc.setFontSize(6.5);
+                doc.text(`Hal ${i}/${totalPages} - Verifikasi: ${trackingCode}`, 20, 285);
+            }
+
+            return doc;
+        }
+
+        function previewPdfFromHistory(item) { window.open(URL.createObjectURL(buildPdfDocument(item).output('blob')), '_blank'); }
+
+        function showSuccessNotificationModal(formData) {
+            document.getElementById('notifHelloText').textContent = `Hello Sobat Rugale,\nSurat Jaminan ${formData.proses_pengusulan} ${formData.nama_narapidana} sudah Jadi Nih\nSilahkan di CETAK dan ditanda tangani yaa`;
+            document.getElementById('successNotificationModal').classList.remove('hidden');
+        }
+
+        function closeSuccessModal() {
+            document.getElementById('successNotificationModal').classList.add('hidden');
+            switchTab('welcome');
+        }
+
+        document.getElementById('jossForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+
+            const jalan = document.getElementById('alamat_jalan').value.trim();
+            const rt = document.getElementById('alamat_rt').value.trim();
+            const rw = document.getElementById('alamat_rw').value.trim();
+            const desa = document.getElementById('alamat_desa').value.trim();
+            const kec = document.getElementById('alamat_kecamatan').value.trim();
+            const kab = document.getElementById('alamat_kabupaten').value.trim();
+            const prov = document.getElementById('alamat_provinsi').value.trim();
+
+            const fullAlamat = `${jalan}, RT.${rt}/RW.${rw}, Desa/Kel. ${desa}, Kec. ${kec}, ${kab}, Prov. ${prov}`.toUpperCase();
+
+            const formData = {
+                proses_pengusulan: prosesSelect.value,
+                nama_penjamin: document.getElementById('nama_penjamin').value.toUpperCase(),
+                umur_penjamin: parseInt(document.getElementById('umur_penjamin').value),
+                pekerjaan_penjamin: document.getElementById('pekerjaan_penjamin').value.toUpperCase(),
+                hubungan_penjamin: document.getElementById('hubungan_penjamin').value.toUpperCase(),
+                alamat_penjamin: fullAlamat,
+                no_handphone: document.getElementById('no_handphone').value,
+                email_penjamin: document.getElementById('email_penjamin').value,
+                nama_narapidana: document.getElementById('nama_narapidana').value.toUpperCase(),
+                umur_narapidana: parseInt(document.getElementById('umur_narapidana').value),
+                no_register_narapidana: document.getElementById('no_register_narapidana').value.toUpperCase(),
+                pekerjaan_narapidana: document.getElementById('pekerjaan_narapidana').value.toUpperCase(),
+                jenis_kelamin_narapidana: document.getElementById('jenis_kelamin_narapidana').value.toUpperCase(),
+                agama_narapidana: document.getElementById('agama_narapidana').value.toUpperCase(),
+                jenis_kejahatan_narapidana: document.getElementById('jenis_kejahatan_narapidana').value.toUpperCase(),
+                pasal_narapidana: document.getElementById('pasal_narapidana').value.toUpperCase(),
+                pidana_tahun: parseInt(document.getElementById('pidana_tahun').value) || 0,
+                pidana_bulan: parseInt(document.getElementById('pidana_bulan').value) || 0,
+                pidana_hari: parseInt(document.getElementById('pidana_hari').value) || 0,
+                tanggal_pembuatan: new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+            };
+
+            await _supabase.from('pengusulan_integrasi').insert([formData]);
+            buildPdfDocument(formData).save(`Berkas_Jaminan_${formData.nama_narapidana}.pdf`);
+            showSuccessNotificationModal(formData);
+            btn.disabled = false;
+        });
+    </script>
+</body>
+</html>
